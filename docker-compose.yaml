@@ -11,21 +11,34 @@ services:
       - ./hadoop_config:/opt/hadoop/etc/hadoop
       - ./start-hdfs.sh:/start-hdfs.sh
     ports:
-      - "9870:9870"
+      - "9871:9870"
     command: [ "/bin/bash", "/start-hdfs.sh" ]
     networks:
       hdfs_network:
-        ipv4_address: 172.20.0.2
+        ipv4_address: 172.24.0.2
 
-  datanode1:
+  resourcemanager:
     image: apache/hadoop:3.4.1
-    container_name: datanode1
-    hostname: datanode1
+    container_name: resourcemanager
+    hostname: resourcemanager
+    user: root
+    depends_on:
+      - namenode
+    environment:
+      - HADOOP_HOME=/opt/hadoop
+    networks:
+      hdfs_network:
+        ipv4_address: 172.24.0.3
+
+  datanode_alfa:
+    image: apache/hadoop:3.4.1
+    container_name: datanode_alfa
+    hostname: datanode_alfa
     user: root
     environment:
       - HADOOP_HOME=/opt/hadoop
     volumes:
-      - ./hadoop_datanode1:/opt/hadoop/data/dataNode
+      - ./hadoop_datanode_alfa:/opt/hadoop/data/dataNode
       - ./hadoop_config:/opt/hadoop/etc/hadoop
       - ./init-datanode.sh:/init-datanode.sh
     depends_on:
@@ -33,17 +46,17 @@ services:
     command: [ "/bin/bash", "/init-datanode.sh" ]
     networks:
       hdfs_network:
-        ipv4_address: 172.20.0.3
+        ipv4_address: 172.24.0.4
 
-  datanode2:
+  datanode_beta:
     image: apache/hadoop:3.4.1
-    container_name: datanode2
-    hostname: datanode2
+    container_name: datanode_beta
+    hostname: datanode_beta
     user: root
     environment:
       - HADOOP_HOME=/opt/hadoop
     volumes:
-      - ./hadoop_datanode2:/opt/hadoop/data/dataNode
+      - ./hadoop_datanode_beta:/opt/hadoop/data/dataNode
       - ./hadoop_config:/opt/hadoop/etc/hadoop
       - ./init-datanode.sh:/init-datanode.sh
     depends_on:
@@ -51,12 +64,66 @@ services:
     command: [ "/bin/bash", "/init-datanode.sh" ]
     networks:
       hdfs_network:
-        ipv4_address: 172.20.0.4
+        ipv4_address: 172.24.0.5
 
-   
+  nodemanager_alfa:
+    image: apache/hadoop:3.4.1
+    container_name: nodemanager_alfa
+    hostname: nodemanager_alfa
+    user: root
+    environment:
+      - HADOOP_HOME=/opt/hadoop
+    volumes:
+      - ./hadoop_config:/opt/hadoop/etc/hadoop
+      - ./init-datanode.sh:/init-datanode.sh
+    depends_on:
+      - namenode
+      - datanode_alfa
+    command: [ "/bin/bash", "/init-datanode.sh" ]
+    networks:
+      hdfs_network:
+        ipv4_address: 172.24.0.6
+  
+  nodemanager_beta:
+    image: apache/hadoop:3.4.1
+    container_name: nodemanager_beta
+    hostname: nodemanager_beta
+    user: root
+    environment:
+      - HADOOP_HOME=/opt/hadoop
+    volumes:
+      - ./hadoop_config:/opt/hadoop/etc/hadoop
+      - ./init-datanode.sh:/init-datanode.sh
+    depends_on:
+      - namenode
+      - datanode_alfa
+    command: [ "/bin/bash", "/init-datanode.sh" ]
+    networks:
+      hdfs_network:
+        ipv4_address: 172.24.0.7
+
+
+  spark_client:
+    image: apache/spark:latest
+    container_name: spark_client
+    hostname: spark_client
+    depends_on:
+      - resourcemanager  # Important: Depends on ResourceManager
+    environment:
+      - HADOOP_CONF_DIR=/etc/hadoop # Point to your Hadoop configuration files
+      - SPARK_HOME=/opt/spark # In case you need it
+    volumes:
+      - ./hadoop_config:/etc/hadoop # Mount your local Hadoop config directory to the container
+    ports:
+      - "8082:8080" # Optional: Expose Spark UI (may conflict if Hadoop exposes it already)
+   #command: ["spark-submit", "--master", "yarn", "--deploy-mode", "cluster", "/opt/spark/work-dir/my_app.jar"]
+    networks:
+      hdfs_network:
+        ipv4_address: 172.24.0.254
+
 networks:
   hdfs_network:
     ipam:
       driver: default
       config:
-        - subnet: 172.20.0.0/16
+        - subnet: 172.24.0.0/24
