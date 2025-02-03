@@ -1,4 +1,5 @@
 #!/bin/bash
 
 echo "Starting ResourceManager..."
-${HADOOP_HOME}/sbin/start-yarn.sh
+/opt/hadoop/bin/yarn --daemon start resourcemanager 
+while true; do sleep 3600; done

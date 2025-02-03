@@ -3,52 +3,63 @@ services:
     image: apache/hadoop:3.4.1
     container_name: namenode
     hostname: namenode
-    user: root
+    user: hadoop
     environment:
       - HADOOP_HOME=/opt/hadoop
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
     volumes:
       - ./hadoop_namenode:/opt/hadoop/data/nameNode
       - ./hadoop_config:/opt/hadoop/etc/hadoop
       - ./start-hdfs.sh:/start-hdfs.sh
-    ports:
-      - "9871:9870"
-    command: ["/start-hdfs.sh" ]
+    command: ["/bin/bash","/start-hdfs.sh" ]
     networks:
       hdfs_network:
         ipv4_address: 172.24.0.2
+    ports:
+      - "9870:9870"  # NameNode web UI
+      - "9000:9000"  # HDFS client communication
+      - "8020:8020" # Secondary NameNode HTTP
+      - "50070:50070" # NameNode HTTP
+      - "50020:50020" # NameNode IPC
+      - "50090:50090" # NameNode HTTP
 
   resourcemanager:
     image: apache/hadoop:3.4.1
     container_name: resourcemanager
     hostname: resourcemanager
-    user: root
+    user: hadoop
     depends_on:
       - namenode
     environment:
       - HADOOP_HOME=/opt/hadoop
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
     volumes:
       - /resourcemanager_data:/opt/hadoop/data/rm 
       - ./hadoop_config:/opt/hadoop/etc/hadoop
       - ./init-yarn.sh:/init-yarn.sh
-    command: ["/init-yarn.sh"]
+    command: ["/bin/bash", "/init-yarn.sh"]
     networks:
       hdfs_network:
         ipv4_address: 172.24.0.3
+    ports:
+      - "8088:8088"
+      - "8031:8031"
 
   datanode_alfa:
     image: apache/hadoop:3.4.1
     container_name: datanode_alfa
     hostname: datanode_alfa
-    user: root
+    user: hadoop
     environment:
-      - HADOOP_HOME=/opt/hadoop
+      - HADOOP_HOME=/opt/hadoop      
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
     volumes:
       - ./hadoop_datanode_alfa:/opt/hadoop/data/dataNode
       - ./hadoop_config:/opt/hadoop/etc/hadoop
       - ./init-datanode.sh:/init-datanode.sh
     depends_on:
       - namenode
-    command: ["/init-datanode.sh" ]
+    command: ["/bin/bash","/init-datanode.sh" ]
     networks:
       hdfs_network:
         ipv4_address: 172.24.0.4
@@ -57,16 +68,17 @@ services:
     image: apache/hadoop:3.4.1
     container_name: datanode_beta
     hostname: datanode_beta
-    user: root
+    user: hadoop
     environment:
       - HADOOP_HOME=/opt/hadoop
+      - hadoop_conf_dir=/opt/hadoop/etc/hadoop
     volumes:
       - ./hadoop_datanode_beta:/opt/hadoop/data/dataNode
       - ./hadoop_config:/opt/hadoop/etc/hadoop
       - ./init-datanode.sh:/init-datanode.sh
     depends_on:
       - namenode
-    command: ["/init-datanode.sh" ]
+    command: ["/bin/bash","/init-datanode.sh" ]
     networks:
       hdfs_network:
         ipv4_address: 172.24.0.5
@@ -75,20 +87,24 @@ services:
     image: apache/hadoop:3.4.1
     container_name: nodemanager_alfa
     hostname: nodemanager_alfa
-    user: root
+    user: hadoop
     environment:
-      - HADOOP_HOME=/opt/hadoop
+      - HADOOP_HOME=/opt/hadoop      
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
     volumes:
       - ./hadoop_config:/opt/hadoop/etc/hadoop
-      - ./init-datanode.sh:/init-datanode.sh
     depends_on:
       - namenode
       - datanode_alfa
-    command: [ "/bin/bash", "/init-datanode.sh" ]
+    command: ["/bin/bash", "-c", "/opt/hadoop/bin/yarn --daemon start nodemanager && while true; do sleep 3600; done"]
     networks:
       hdfs_network:
         ipv4_address: 172.24.0.6
-  
+    ports:
+      - "8045:8045"  # NodeManager Web UI
+      - "8043:8043"  # Localizer Service
+      - "13563:13563"  # MapReduce Shuffle Port 
+
   nodemanager_beta:
     image: apache/hadoop:3.4.1
     container_name: nodemanager_beta
@@ -96,16 +112,20 @@ services:
     user: root
     environment:
       - HADOOP_HOME=/opt/hadoop
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
     volumes:
       - ./hadoop_config:/opt/hadoop/etc/hadoop
-      - ./init-datanode.sh:/init-datanode.sh
     depends_on:
       - namenode
-      - datanode_alfa
-    command: [ "/bin/bash", "/init-datanode.sh" ]
+      - datanode_beta
+    command: ["/bin/bash", "-c", "/opt/hadoop/bin/yarn --daemon start nodemanager && while true; do sleep 3600; done"]
     networks:
       hdfs_network:
         ipv4_address: 172.24.0.7
+    ports:
+      - "8042:8042"  # NodeManager Web UI
+      - "8040:8040"  # Localizer Service
+      - "13562:13562"  # MapReduce Shuffle Port 
 
 
   spark_client:
