@@ -12,7 +12,7 @@ services:
       - ./start-hdfs.sh:/start-hdfs.sh
     ports:
       - "9871:9870"
-    command: [ "/bin/bash", "/start-hdfs.sh" ]
+    command: ["/start-hdfs.sh" ]
     networks:
       hdfs_network:
         ipv4_address: 172.24.0.2
@@ -26,6 +26,11 @@ services:
       - namenode
     environment:
       - HADOOP_HOME=/opt/hadoop
+    volumes:
+      - /resourcemanager_data:/opt/hadoop/data/rm 
+      - ./hadoop_config:/opt/hadoop/etc/hadoop
+      - ./init-yarn.sh:/init-yarn.sh
+    command: ["/init-yarn.sh"]
     networks:
       hdfs_network:
         ipv4_address: 172.24.0.3
@@ -43,7 +48,7 @@ services:
       - ./init-datanode.sh:/init-datanode.sh
     depends_on:
       - namenode
-    command: [ "/bin/bash", "/init-datanode.sh" ]
+    command: ["/init-datanode.sh" ]
     networks:
       hdfs_network:
         ipv4_address: 172.24.0.4
@@ -61,7 +66,7 @@ services:
       - ./init-datanode.sh:/init-datanode.sh
     depends_on:
       - namenode
-    command: [ "/bin/bash", "/init-datanode.sh" ]
+    command: ["/init-datanode.sh" ]
     networks:
       hdfs_network:
         ipv4_address: 172.24.0.5
